@@ -38,6 +38,12 @@ def load_image_files(container_path, dimension=(30, 30, 3)):
     img_dict["target"] = target
     return pd.DataFrame.from_dict(img_dict)
 
-dataset = load_image_files("/home/joshuavanstaden/Datasets/Oxythyrea_images/training")
-dataset.to_pickle("Oxythyrea_dataframe.pkl")
-print("Saved File")
+train = load_image_files("/home/joshuavanstaden/Datasets/Oxythyrea_images/training")
+test = load_image_files("/home/joshuavanstaden/Datasets/Oxythyrea_images/testing")
+unseen = load_image_files("/home/joshuavanstaden/Datasets/Oxythyrea_images/unseen_images")
+train.to_pickle("train.pkl")
+test.to_pickle("test.pkl")
+unseen.to_pickle("unseen.pkl")
+print("Saved Files")
+
+
