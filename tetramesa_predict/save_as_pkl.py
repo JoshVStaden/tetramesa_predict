@@ -4,6 +4,7 @@ from skimage import io
 from skimage.transform import resize
 import numpy as np
 from sklearn.utils import Bunch
+import pandas as pd
 
 def load_image_files(container_path, dimension=(30, 30, 3)):
 
@@ -26,12 +27,17 @@ def load_image_files(container_path, dimension=(30, 30, 3)):
     target = np.array(target)
     images = np.array(images)
 
-    # return in the exact same format as the built-in datasets
-    return Bunch(data=flat_data,
-                 target=target,
-                 target_names=categories,
-                 images=images,
-                 DESCR=descr)
+    # print(flat_data.shape)
+    # quit()
+    img_dict = {}
+    for i in range(flat_data.shape[1]):
+        for j in range(flat_data.shape[2]):
+            for k in range(flat_data.shape[3]):
+                img_dict["pix_%s_%s_%s" %(i,j,k)] = flat_data[:,i,j,k]
+
+    img_dict["target"] = target
+    return pd.DataFrame.from_dict(img_dict)
 
 dataset = load_image_files("/home/joshuavanstaden/Datasets/Oxythyrea_images/training")
-print(dataset.target_names)
+dataset.to_pickle("Oxythyrea_dataframe.pkl")
+print("Saved File")
