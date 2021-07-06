@@ -1,8 +1,12 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
+import seaborn as sns
 
 from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
 
 from tensorflow.keras.layers import Dense, Flatten, Dropout
 from tensorflow.keras.models import Sequential
@@ -60,11 +64,11 @@ def add_top_layer(model, num_classes, hp, config=0):
     return new_model
 
 
-def pickle_to_dataframe(df):
-    X = train_set.drop('target', axis=1).to_numpy().reshape((train_set.shape[0],)+(32, 32, 3))
+def preprocess_dataframe(df):
+    X = train_set.drop(['target', 'target_str'], axis=1).to_numpy().reshape((train_set.shape[0],)+(32, 32, 3))
     image_shape = X.shape[1:]
     y = train_set['target']
-    classes = np.unique(y)
+    classes = np.unique(train_set["target_str"])
     y = to_categorical(y)
     return X, y, classes, image_shape
 
@@ -83,14 +87,35 @@ def plot_history(history):
     plt.legend(loc='best')
     plt.savefig("./train_history.png")
 
+def to_numeric(results):
+    return np.argmax(results,axis=1)
 
 if __name__ == '__main__':
+    # Read train set from train.pkl and test set from test.pkl
     train_set = pd.read_pickle("train.pkl")
     test_set = pd.read_pickle("test.pkl")
-    X_train, y_train, classes, image_shape = pickle_to_dataframe(train_set)
-    X_test, y_test, _, _ = pickle_to_dataframe(test_set)
+
+    # Convert from Pandas Dataframe format into one recognized by ML algorithm
+    X_train, y_train, classes, image_shape = preprocess_dataframe(train_set)
+    X_test, y_test, _, _ = preprocess_dataframe(test_set)
+
+    # Split training data into train and validation
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.3)
+
+    # Use BayesianOptimization fine-tuning. I use callback to track the training
     tuner = kt.BayesianOptimization(vgg16_model, objective='val_loss', max_trials=5)
-    tuner.search(X_train, y_train, epochs=100, validation_data=(X_test, y_test))
-    best_model = tuner.get_best_model()[0]
-    hist = best_model.fit(X_train, y_train, epochs=100, validation_data=(X_test, y_test))
-    plot_history(hist.history)
+    tuner.search(X_train, y_train, epochs=100, validation_data=(X_val, y_val), callbacks=[tf.keras.callbacks.TensorBoard("training_history")])
+    best_trial_id = tuner.oracle.get_best_trials()[0].trial_id
+    print("Fine-Tuning Done. To see training history of best trial, run:")
+    print("tensorboard --logdir training_history/%s/execution0" %best_trial_id)
+
+    # Evaluate the best model
+    best_model = tuner.get_best_models()[0]
+    y_pred = to_numeric(best_model.predict(X_test))
+    y_test = to_numeric(y_test)
+    print(y_pred.shape, y_test.shape)
+    # quit()
+    conf_mat = metrics.confusion_matrix(y_test, y_pred)
+    conf_mat = pd.DataFrame(conf_mat, index=classes, columns=classes)
+    sns.heatmap(conf_mat, annot=True)
+    plt.savefig("cofusion_matrix.png")
