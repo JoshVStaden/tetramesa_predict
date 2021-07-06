@@ -13,7 +13,7 @@ cd tetramesa_predict
 pip install -e .
 ```
 
-## To Load the Botnet Data
+## To Load the Data
 
 Currently, the dataset still needs to be hosted somewhere. Otherwise, the .pkl files have already been included in the repository.
 
